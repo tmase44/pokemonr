@@ -5,6 +5,7 @@ install.packages("tmaptools") # run in console not script
 install.packages("tidyverse")
 install.packages("tidyr")
 install.packages("sf")
+install.packages("ggiraphExtra") # additional graph functions for regression
 
 # LOAD PACKAGES---------------------!!!!!!!!!!!!!!!!
 
@@ -15,6 +16,7 @@ library(tmap) # plot and visualize maps
   # includes sf simple features for GEOS geometric operations
 library(tmaptools) # bonus tmaps features
 library(sf) # this is a pain to install..
+library(ggiraphExtra)
 
 # prep dataset----------------------
 
@@ -197,7 +199,8 @@ summary(lmw) # regression of water pokemon - Attack & SpDef correlation
 lmwm<-lm(HP~Attack+Defense+SpAtk+SpDef+Speed,
         data=watermeans)
 summary(lmwm) # regression of means by group - poor correlation
-
+rm(lmw)
+rm(lmwm)
 # then regression should be checked for each, lets chart and look
 water %>% 
   ggplot(aes(HP,color=Type2))+
@@ -208,7 +211,52 @@ water %>%
   geom_point()+
   theme(legend.position = "none")
 
+# linear regression comparing those with Type 2 against those without
+  # those without would be the baseline
+watert2na <- 
+  water %>% 
+  filter(is.na(Type2))
 
+lmt2na<-lm(HP~Attack+Defense+SpAtk+SpDef+Speed,
+         data=watert2na)
+summary(lmt2na) 
+# so there is little relationship between HP and performance on base types
+# try something else, first lets make all NA's "A"
+water2<-water # copy water
+water2$Type2<-as.character(water2$Type2) #convert to factor
+water2$Type2[is.na(water2$Type2)]<-"None" # convert NA to None
+unique(water2$Type2) # show the values
+water2$Type2<-factor(water2$Type2,levels=c("None","Dark","Dragon","Electric",
+                                           "Fairy","Fighting","Flying","Ghost",
+                                           "Grass","Ground","Ice","Poison",
+                                           "Psychic","Rock","Steel"))
+# now NA has been added first in the order, it's converted to factor again
+# now a reg. model can be done with Type 2 = None as the base
+model<-lm(Total~Type2*Attack, # TYPE 2 SWITCHED ON TO SOMETHING HERE!
+          data=water2)
+summary(model)
+# would indicate that Dragn types have a high correlation between HP and Total
+# AMAZING CHART SPLITS ALL TYPES
+
+ggplot(water2,aes(y=Total,x=Attack,color=factor(Type2)))+
+  geom_point()+
+  stat_smooth(method="lm",se=FALSE,alpha=0.5)+
+  facet_wrap(vars(Type2))+
+  theme(legend.position = "none", plot.title=element_text(hjust = 0.5),)+
+  labs(title="Relationship between attack power and total power \n amongst water pokemon with second types")
+
+# This chart is very useful because it shows amongst the water pokemon
+  # Standard water type have a normal std.dev
+  # Other types skew strong, others weak or have a limited range of Total power and attack
+
+# this would be interesting to do for
+  # all type1s against each other
+  # generations against each other
+  # legendaries vs mega vs normal
+
+  
+
+  
 # BY GENERATION
 
 

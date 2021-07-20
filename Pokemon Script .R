@@ -6,6 +6,9 @@ install.packages("tidyverse")
 install.packages("tidyr")
 install.packages("sf")
 install.packages("ggiraphExtra") # additional graph functions for regression
+install.packages("gridExtra")
+install.packages("plotly")
+install.packages("htmlwidgets")
 
 # LOAD PACKAGES---------------------!!!!!!!!!!!!!!!!
 
@@ -17,6 +20,9 @@ library(tmap) # plot and visualize maps
 library(tmaptools) # bonus tmaps features
 library(sf) # this is a pain to install..
 library(ggiraphExtra)
+library(gridExtra)
+library(plotly)
+library(htmlwidgets)
 
 # prep dataset----------------------
 
@@ -108,12 +114,43 @@ rm(map)
 rm(map2)
 
 # FIRST ROUND CHARTING---------------------
+# count of each type
+poptype<-count(master3,Type1) # good practice to separate the charting data
+
+poptype %>% 
+  ggplot(aes(x=reorder(Type1,-n),y=n))+ # (x=reorder(Type1,-n) allows for hi-low sorting
+  geom_bar(stat='identity')+ # without 'identity' it will not chart
+  labs(title="Population count by Type",
+       x="Type",
+       y="Species count")+
+  theme(axis.text.x = element_text(colour = "grey20", size = 6, angle = 90, 
+                                   hjust = 0.5, vjust = 0.5),
+        axis.text.y = element_text(colour = "grey20", size = 6),
+        text = element_text(size = 12))
 
 # looking at HP
 # by default here I get an error - >30 bins (big dataset) so bins are reduced
-ggplot(master3,aes(x=HP))+
+hp<-ggplot(master3,aes(x=HP))+
   geom_histogram(bins=20)+
   geom_vline(aes(xintercept=mean(HP)))
+atk<-ggplot(master3,aes(x=Attack))+
+  geom_histogram(bins=20)+
+  geom_vline(aes(xintercept=mean(Attack)))
+def<-ggplot(master3,aes(x=Defense))+
+  geom_histogram(bins=20)+
+  geom_vline(aes(xintercept=mean(Defense)))
+spatk<-ggplot(master3,aes(x=SpAtk))+
+  geom_histogram(bins=20)+
+  geom_vline(aes(xintercept=mean(SpAtk)))
+spdef<-ggplot(master3,aes(x=SpDef))+
+  geom_histogram(bins=20)+
+  geom_vline(aes(xintercept=mean(SpDef)))
+speed<-ggplot(master3,aes(x=Speed))+
+  geom_histogram(bins=20)+
+  geom_vline(aes(xintercept=mean(Speed)))
+
+grid.arrange(hp,atk,def,spatk,spdef,speed,nrow=2,ncol=3,
+             top=("Histograms of Power Stats"))
 
 # I might also want to see density
 ggplot(master3,aes(x=HP))+
@@ -223,7 +260,7 @@ summary(lmt2na)
 # so there is little relationship between HP and performance on base types
 # try something else, first lets make all NA's "A"
 water2<-water # copy water
-water2$Type2<-as.character(water2$Type2) #convert to factor
+water2$Type2<-as.character(water2$Type2) #convert to char
 water2$Type2[is.na(water2$Type2)]<-"None" # convert NA to None
 unique(water2$Type2) # show the values
 water2$Type2<-factor(water2$Type2,levels=c("None","Dark","Dragon","Electric",
@@ -254,32 +291,53 @@ ggplot(water2,aes(y=Total,x=Attack,color=factor(Type2)))+
   # generations against each other
   # legendaries vs mega vs normal
 
+# LETS GO BACK TO THE BEGINNING---------------------------------------
+  # lets turn "NA" to "None" for the entire master 3 dataset like before
+
+master4<-master3 
+unique(master4$Type2)
+master4$Type2<-as.character(master4$Type2) #convert to char
+master4$Type2[is.na(master4$Type2)]<-"None" # convert NA to None
+master4$Type2<-factor(master4$Type2,levels=c("None","Bug","Dark","Dragon","Electric",
+                                           "Fire","Fairy","Fighting","Flying","Ghost",
+                                           "Grass","Ground","Ice","Normal","Poison",
+                                           "Psychic","Rock","Steel","Water"))
+# repeat for type 1
+unique(master4$Type1)
+master4$Type1<-as.character(master4$Type1) #convert to char
+                                           # no NA adjustment needed
+master4$Type1<-factor(master4$Type1,levels=c("Bug","Dark","Dragon","Electric",
+                                             "Fire","Fairy","Fighting","Flying","Ghost",
+                                             "Grass","Ground","Ice","Normal","Poison",
+                                             "Psychic","Rock","Steel","Water"))
+rm(master3)
+ggplot(master4,aes(y=Total,x=HP,color=factor(Type1)))+
+  geom_point(alpha=0.3)+
+  stat_smooth(method="lm",se=TRUE,alpha=0.5)+
+  facet_wrap(vars(Type1))+
+  theme(legend.position = "none", plot.title=element_text(hjust = 0.5),)+
+  labs(title="Relationship between Total power & HP by Type")
+
+test<-ggplot(master4,aes(Total,HP,
+                         text=paste(
+                           "Name: ", Name
+                         )))+
+  geom_point(aes(color=Type1))+
+  stat_smooth(method="lm",se=FALSE,alpha=0.5)+
+  labs(title = "Scatter plot of Total power and HP")
+
+ggplotly(test) 
+
+ggplot(master4,aes(Total,HP))+ # distribution vertical by Type
+  geom_point(aes(Type1,color=Type1))+
+  theme(axis.text.x = element_text(angle=90))+
+  labs(title="Total power and HP distribution by type")+
+  theme(legend.position = "none")
+
+ # Which pokemon has the highest HP in each type??
+
+master4 %>% 
+  group_by(Type1) %>% 
+  select(Type1, Name, HP) %>% 
+  filter(HP==max(HP)) %>% 
   
-
-  
-# BY GENERATION
-
-
-
-  # count of each type
-poptype<-count(master3,Type1) # good practice to separate the charting data
-
-poptype %>% 
-ggplot(aes(x=reorder(Type1,-n),y=n))+ # (x=reorder(Type1,-n) allows for hi-low sorting
-  geom_bar(stat='identity')+ # without 'identity' it will not chart
-  labs(title="Species count by Type",
-       x="Type",
-       y="Species count")+
-  theme(axis.text.x = element_text(colour = "grey20", size = 6, angle = 90, 
-                                   hjust = 0.5, vjust = 0.5),
-        axis.text.y = element_text(colour = "grey20", size = 6),
-        text = element_text(size = 12))
-  
-# 1. Stats by type-----------------
-# Total by type
-ggplot(master3,aes(x=Type1, y=Total))+
-  geom_boxplot()+
-  theme(axis.text.x = element_text(angle = 90))
-
-# total scatter Attack and Defense
-ggplot(master3,aes(x=))
